@@ -9,14 +9,24 @@ import UIKit
 import RealityKit
 import ARKit
 import MultipeerSession
+import SwiftUI
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, ObservableObject {
     
     @IBOutlet var arView: ARView!
     
     var multipeerSession: MultipeerSession?
     var sessionIDObservation: NSKeyValueObservation?
+    var contentView: ContentView?
     
+    
+    @IBSegueAction func segueToHostingController(_ coder: NSCoder) -> UIViewController? {
+        return UIHostingController(coder: coder, rootView: ContentView(){ [weak self] (text: String, colour: NoteColour) -> Void in
+            guard let self = self else { return }
+            self.addNoteEntity(text: text, colour: colour)
+        })
+    }
+   
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 //
@@ -28,6 +38,12 @@ class ViewController: UIViewController {
         
         setUpARView()
         setupMultipeerSession()
+        
+//        // Change this to a ContentView and pass a function of the same type...
+//        contentView = ContentView() { [weak self] (text: String, colour: NoteColour, share: Bool) -> Void in
+//            guard let self = self else { return }
+//            self.addNoteEntity(text: text, colour: colour, share: share)
+//        }
         
         arView.session.delegate = self
         
@@ -74,22 +90,72 @@ class ViewController: UIViewController {
         arView.session.add(anchor: anchor)
     }
     
-    func placeObject(named entityName: String, for anchor: ARAnchor) {
-        // this line differs
-        let boxAnchor = try! Experience.loadBox()
-        let anchorEntity = AnchorEntity(anchor: anchor)
-        anchorEntity.addChild(boxAnchor)
-        arView.scene.addAnchor(anchorEntity)
-        
+//    func placeObject(named entityName: String, for anchor: ARAnchor) {
+//        // this line differs
+//        let boxAnchor = try! Experience.loadBox()
+//        let anchorEntity = AnchorEntity(anchor: anchor)
+//        anchorEntity.addChild(boxAnchor)
+//        arView.scene.addAnchor(anchorEntity)
+//
+//    }
+    
+    func createNoteEntity(text: String, colour: NoteColour, anchor: ARAnchor) -> AnchorEntity {
+      let noteAnchor: Entity & HasAnchoring = {
+        switch colour {
+        case .yellow: return try! Experience.loadYellow()
+        case .green: return try! Experience.loadGreen()
+        case .pink: return try! Experience.loadPink()
+        }
+      }()
+      
+      let paperEntity = noteAnchor.findEntity(named: "Plane")! as! ModelEntity
+      
+      let textMesh = MeshResource.generateText(
+        text,
+        extrusionDepth: 0.001,
+        font: .systemFont(ofSize: 0.1),
+        containerFrame: .init(x: 0.0, y: 0.0, width: 1.6, height: 1.2),
+        alignment: .left,
+        lineBreakMode: .byWordWrapping
+      )
+      
+      let textMaterial = SimpleMaterial(color: .black, isMetallic: false)
+      
+      let textEntity = ModelEntity(mesh: textMesh, materials: [textMaterial])
+      
+      textEntity.transform.rotation = simd_quatf(angle: -.pi/2, axis: [1, 0, 0]) * simd_quatf(angle: .pi/2, axis: [0, 0, 1])
+      textEntity.transform.translation = SIMD3<Float>(0.9, 0.035, 0.8)
+      
+      paperEntity.addChild(textEntity)
+      
+      let anchorEntity = AnchorEntity(anchor: anchor)
+      anchorEntity.addChild(noteAnchor)
+      
+      return anchorEntity
+    }
+    
+    func addNoteEntity(text: String, colour: NoteColour) {
+      var viewCenter: CGPoint {
+        let viewBounds = view.bounds
+        return CGPoint(x: viewBounds.width / 2.0, y: viewBounds.height / 2.0)
+      }
+      
+      if let hit = arView.hitTest(viewCenter, types: [.existingPlaneUsingExtent]).first {
+        let anchor = ARAnchor.init(transform: hit.worldTransform)
+        let noteEntity: AnchorEntity = createNoteEntity(text: text, colour: colour, anchor: anchor)
+        arView.scene.anchors.append(noteEntity)
+        self.arView.installGestures(for: noteEntity.findEntity(named: "paper")! as! Entity & HasCollision)
+        arView.session.add(anchor: anchor)
+      }
     }
 }
 
 extension ViewController: ARSessionDelegate {
     func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
-        for anchor in anchors {
-            if let anchorName = anchor.name, anchorName == "box" {
-                placeObject(named: anchorName, for: anchor)
-            }
+//        for anchor in anchors {
+//            if let anchorName = anchor.name, anchorName == "box" {
+//                placeObject(named: anchorName, for: anchor)
+//            }
             
 //            if let participantAnchor = anchor as? ARParticipantAnchor {
 //                print("Successfully connected with another user")
@@ -102,7 +168,7 @@ extension ViewController: ARSessionDelegate {
 //
 //                anchorEntity.addChild(coloredSphere)
 //                arView.scene.addAnchor(anchor)
-            }
+//            }
     }
 }
 
@@ -192,5 +258,15 @@ extension ViewController {
             print("Deferred sending collaboration to later because there are no peers")
         }
     }
-    
 }
+
+//struct ViewControllerWrapper: UIViewControllerRepresentable {
+//  typealias UIViewControllerType = ViewController
+//  @State var controller: ViewController = ViewController()
+//
+//  func makeUIViewController(context: Context) -> ViewController {
+//    return controller
+//  }
+//
+//  func updateUIViewController(_ uiViewController: ViewControllerWrapper.UIViewControllerType, context: Context) { /* Nothing to do here */ }
+//}
