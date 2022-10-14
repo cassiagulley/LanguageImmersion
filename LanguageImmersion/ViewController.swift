@@ -18,6 +18,7 @@ class ViewController: UIViewController, ObservableObject {
     var multipeerSession: MultipeerSession?
     var sessionIDObservation: NSKeyValueObservation?
     var contentView: ContentView?
+    var testString: [String: String] = [:]
     
     
     @IBSegueAction func segueToHostingController(_ coder: NSCoder) -> UIViewController? {
@@ -47,8 +48,8 @@ class ViewController: UIViewController, ObservableObject {
         
         arView.session.delegate = self
         
-        let tapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleTap(recognizer:)))
-        arView.addGestureRecognizer(tapGestureRecognizer)
+//        let tapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleTap(recognizer:)))
+//        arView.addGestureRecognizer(tapGestureRecognizer)
     }
     
     func setUpARView() {
@@ -85,21 +86,21 @@ class ViewController: UIViewController, ObservableObject {
         
     }
     
-    @objc func handleTap(recognizer: UITapGestureRecognizer) {
-        let anchor = ARAnchor(name: "box", transform: arView!.cameraTransform.matrix)
-        arView.session.add(anchor: anchor)
-    }
-    
-//    func placeObject(named entityName: String, for anchor: ARAnchor) {
-//        // this line differs
-//        let boxAnchor = try! Experience.loadBox()
-//        let anchorEntity = AnchorEntity(anchor: anchor)
-//        anchorEntity.addChild(boxAnchor)
-//        arView.scene.addAnchor(anchorEntity)
-//
+//    @objc func handleTap(recognizer: UITapGestureRecognizer) {
+//        let anchor = ARAnchor(name: "box", transform: arView!.cameraTransform.matrix)
+//        arView.session.add(anchor: anchor)
 //    }
     
-    func createNoteEntity(text: String, colour: NoteColour, anchor: ARAnchor) -> AnchorEntity {
+    func placeObject(named entityName: String, for anchor: ARAnchor) {
+        // this line differs
+        let boxAnchor = try! Experience.loadYellow()
+        let anchorEntity = AnchorEntity(anchor: anchor)
+        anchorEntity.addChild(boxAnchor)
+        arView.scene.addAnchor(anchorEntity)
+
+    }
+    
+    func createNoteEntity(text: String, colour: NoteColour, anchor: ARAnchor) {
       let noteAnchor: Entity & HasAnchoring = {
         switch colour {
         case .yellow: return try! Experience.loadYellow()
@@ -128,47 +129,74 @@ class ViewController: UIViewController, ObservableObject {
       
       paperEntity.addChild(textEntity)
       
-      let anchorEntity = AnchorEntity(anchor: anchor)
-      anchorEntity.addChild(noteAnchor)
+      let anchorEntity1 = AnchorEntity(anchor: anchor)
+      anchorEntity1.addChild(noteAnchor)
       
-      return anchorEntity
+//      return anchorEntity
+        let anchorEntity = AnchorEntity(anchor: anchor)
+        anchorEntity.addChild(anchorEntity1)
+        arView.scene.addAnchor(anchorEntity)
+        
+        
     }
     
     func addNoteEntity(text: String, colour: NoteColour) {
-      var viewCenter: CGPoint {
-        let viewBounds = view.bounds
-        return CGPoint(x: viewBounds.width / 2.0, y: viewBounds.height / 2.0)
-      }
-      
-      if let hit = arView.hitTest(viewCenter, types: [.existingPlaneUsingExtent]).first {
-        let anchor = ARAnchor.init(transform: hit.worldTransform)
-        let noteEntity: AnchorEntity = createNoteEntity(text: text, colour: colour, anchor: anchor)
-        arView.scene.anchors.append(noteEntity)
-        self.arView.installGestures(for: noteEntity.findEntity(named: "paper")! as! Entity & HasCollision)
+//      var viewCenter: CGPoint {
+//        let viewBounds = view.bounds
+//        return CGPoint(x: viewBounds.width / 2.0, y: viewBounds.height / 2.0)
+//      }
+//
+//      if let hit = arView.hitTest(viewCenter, types: [.existingPlaneUsingExtent]).first {
+//        let anchor = ARAnchor.init(transform: hit.worldTransform)
+//        let noteEntity: AnchorEntity = createNoteEntity(text: text, colour: colour, anchor: anchor)
+//        arView.scene.anchors.append(noteEntity)
+//        self.arView.installGestures(for: noteEntity.findEntity(named: "paper")! as! Entity & HasCollision)
+//        arView.session.add(anchor: anchor)
+//      }
+        
+        
+        
+//        let anchor = ARAnchor.init(transform: arView!.cameraTransform.matrix)
+//        arView.session.add(anchor: anchor)
+//
+//        let noteEntity: AnchorEntity = createNoteEntity(text: text, colour: colour, anchor: anchor)
+//        let anchorEntity = AnchorEntity(anchor: anchor)
+//        anchorEntity.addChild(noteEntity)
+//        arView.scene.addAnchor(anchorEntity)
+//
+//        self.arView.installGestures(for: noteEntity.findEntity(named: "paper")! as! Entity & HasCollision)
+        
+        
+        let anchor = ARAnchor(name: text, transform: arView!.cameraTransform.matrix)
         arView.session.add(anchor: anchor)
-      }
+//       arView.session.setValue(colour, forKey: text)
+
+        
     }
 }
 
 extension ViewController: ARSessionDelegate {
     func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
-//        for anchor in anchors {
-//            if let anchorName = anchor.name, anchorName == "box" {
-//                placeObject(named: anchorName, for: anchor)
-//            }
+        for anchor in anchors {
             
-//            if let participantAnchor = anchor as? ARParticipantAnchor {
-//                print("Successfully connected with another user")
-//
-//                let anchorEntity = AnchorEntity(anchor: participantAnchor)
-//                let mesh = MeshResource.generateSphere(radius: 0.03)
-//                let color: UIColor.red
-//                let material = SimpleMaterial(color: color, isMetallic: false)
-//                let coloredSphere = ModelEntity(mesh: mesh, materials: [material])
-//
-//                anchorEntity.addChild(coloredSphere)
-//                arView.scene.addAnchor(anchor)
-//            }
+            if let anchorName = anchor.name {
+//                placeObject(named: anchorName, for: anchor)
+                createNoteEntity(text: anchorName, colour: .yellow, anchor: anchor)
+            }
+            
+            //            if let participantAnchor = anchor as? ARParticipantAnchor {
+            //                print("Successfully connected with another user")
+            //
+            //                let anchorEntity = AnchorEntity(anchor: participantAnchor)
+            //                let mesh = MeshResource.generateSphere(radius: 0.03)
+            //                let color: UIColor.red
+            //                let material = SimpleMaterial(color: color, isMetallic: false)
+            //                let coloredSphere = ModelEntity(mesh: mesh, materials: [material])
+            //
+            //                anchorEntity.addChild(coloredSphere)
+            //                arView.scene.addAnchor(anchor)
+            //          }
+        }
     }
 }
 
